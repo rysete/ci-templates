@@ -1,0 +1,68 @@
+name: Python Qt PyInstaller Build
+
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        required: true
+        type: string
+
+      entry-point:
+        required: false
+        type: string
+
+      spec-file:
+        required: false
+        type: string
+
+      python-version:
+        required: false
+        default: "3.11"
+        type: string
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Upgrade pip
+      run: python -m pip install --upgrade pip
+
+    - name: Install dependencies
+      run: |
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      shell: bash
+
+    - name: Install PyInstaller
+      run: pip install pyinstaller
+
+    - name: Build with PyInstaller (spec)
+      if: inputs.spec-file != ''
+      run: pyinstaller ${{ inputs.spec-file }}
+
+    - name: Build with PyInstaller (entry-point)
+      if: inputs.spec-file == ''
+      run: >
+        pyinstaller
+        --onefile
+        --windowed
+        --name ${{ inputs.app-name }}
+        ${{ inputs.entry-point }}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.app-name }}_${{ matrix.os }}
+        path: dist/*
